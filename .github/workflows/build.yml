@@ -1,0 +1,43 @@
+
+name: Project64 Windows Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Disable support popup
+        shell: pwsh
+        run: |
+          $file = "Source/Project64/UserInterface/SupportWindow.cpp"
+          $source = Get-Content $file -Raw
+          $pattern = '(void CSupportWindow::Show\(HWND hParent, bool Delay\)\s*\{)'
+          if ($source -notmatch $pattern) {
+            throw "SupportWindow::Show not found"
+          }
+          $source = [regex]::Replace(
+            $source, $pattern, '$1' + "`r`n    return;", 1
+          )
+          Set-Content $file $source
+
+      - name: Build Project64 x86
+        run: msbuild Source/Project64/Project64.vcxproj /m /p:Configuration=Release /p:Platform=Win32
+
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: Project64-custom-build
+          path: |
+            Bin/**/*.exe
+            Bin/**/*.dll
+          if-no-files-found: error
