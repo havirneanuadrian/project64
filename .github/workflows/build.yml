@@ -17,6 +17,20 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
+      - name: Disable support popup
+        shell: pwsh
+        run: |
+          $file = "Source/Project64/UserInterface/SupportWindow.cpp"
+          $source = Get-Content $file -Raw
+          $pattern = '(void CSupportWindow::Show\(HWND hParent, bool Delay\)\s*\{)'
+          if ($source -notmatch $pattern) {
+            throw "SupportWindow::Show not found"
+          }
+          $source = [regex]::Replace(
+            $source, $pattern, '$1' + "`r`n    return;", 1
+          )
+          Set-Content $file $source
+
       - name: Build UpdateVersion x86
         shell: cmd
         run: |
