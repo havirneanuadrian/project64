@@ -23,13 +23,34 @@ jobs:
           $file = "Source/Project64/UserInterface/SupportWindow.cpp"
           $source = Get-Content $file -Raw
           $pattern = '(void CSupportWindow::Show\(HWND hParent, bool Delay\)\s*\{)'
+
           if ($source -notmatch $pattern) {
             throw "SupportWindow::Show not found"
           }
+
           $source = [regex]::Replace(
-            $source, $pattern, '$1' + "`r`n    return;", 1
+            $source,
+            $pattern,
+            '$1' + "`n    return;",
+            1
           )
-          Set-Content $file $source
+
+          [System.IO.File]::WriteAllText(
+            (Join-Path (Get-Location) $file),
+            $source
+          )
+
+          $clang = Get-Command clang-format -ErrorAction SilentlyContinue
+
+          if (-not $clang) {
+            throw "clang-format not found"
+          }
+
+          & $clang.Source -i $file
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "clang-format failed"
+          }
 
       - name: Build UpdateVersion x86
         shell: cmd
